@@ -83,7 +83,7 @@ def tk_image(filename, width=None, height=None, *, dirpath=None, get_object_only
         width = int(size[0] * rate)
         size = (width, height)
     # ----- size -----
-    img = TkImage(os.path.join(path, filename), width, height)
+    img = TkImage(os.path.join(path, filename), *size)
     if get_object_only:
         return img
     return img.get_image()
