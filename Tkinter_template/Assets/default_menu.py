@@ -1,13 +1,20 @@
 '''
-@version: 1.0.0
+@version: 1.2.0
 @author: CrossingVoid
-@date: 2023/03/05
+@date: 2024/07/02
 
 The default_menu.py is mainly for optional
 function in the selective function.
 
+version 1.1.0:
+  add function main_canvas_focus, it allowed user to
+  set focus on main canvas by click menu command
+
+version 1.2.0:
+  add function adjuest_volume, it can adjust main background music and
+  all channel of sound effect volume separately
 '''
-from Tkinter_template.Assets.project_management import new_window, select_cover
+from Tkinter_template.Assets.project_management import new_window, select_cover, making_widget
 from Tkinter_template.Assets.font import font_get
 from Tkinter_template.Assets.image import tk_image
 from PIL import ImageColor
@@ -15,7 +22,7 @@ from tkinter import *
 import os
 
 
-def background_color(canvas: object):
+def background_color(canvas: object, icon=None):
     def color(position):
         str_of_color = f'#{red.get():02x}{green.get():02x}{blue.get():02x}'
         canvas.config(bg=str_of_color)
@@ -24,7 +31,10 @@ def background_color(canvas: object):
         canvas.config(bg=color)
         win.destroy()
 
-    win = new_window('Background Color')
+    if icon is None:
+        win = new_window('Background Color', )
+    else:
+        win = new_window('Background Color', icon)
 
     red = Scale(win, font=font_get(20), bg='red', length=255, tickinterval=50, command=color,
                 from_=0, to=255, label='Red')
@@ -53,7 +63,7 @@ def background_color(canvas: object):
         index += 1
 
 
-def canvas_cover(canvas: object, canvas_side: tuple, side: tuple = None):
+def canvas_cover(canvas: object, canvas_side: tuple, side: tuple = None, icon=None):
     def click(num):
         canvas_.itemconfigure(f'rec{num}', state='normal')
         for i in range(len(cover)):
@@ -63,10 +73,15 @@ def canvas_cover(canvas: object, canvas_side: tuple, side: tuple = None):
     def double_click(num):
         select_cover(canvas, canvas_side, cover[num])
         win.destroy()
+
     if side is None:
         side = canvas_side
-    win = new_window(
-        'Windows Cover', maxsize=side)
+    if icon is None:
+        win = new_window(
+            'Windows Cover', maxsize=side)
+    else:
+        win = new_window(
+            'Windows Cover', icon, maxsize=side)
     scrollbar = Scrollbar(win)
     scrollbar.grid(row=1, column=2, sticky='ns')
     canvas_ = Canvas(win, width=side[0]-int(scrollbar['width']), height=side[1], bg=canvas['bg'],
@@ -106,3 +121,65 @@ def canvas_cover(canvas: object, canvas_side: tuple, side: tuple = None):
     )
     canvas_.bind('<MouseWheel>', lambda event: canvas_.yview_scroll(-(event.delta//120), 'units')
                  )
+
+
+def main_canvas_focus(canvas: object):
+    canvas.focus_set()
+
+
+def adjust_volume(music_object, soundeffect_object, icon=False):
+    class Volume:
+        order = 0
+        img_name = ['Volume_mute', 'Volume_medium', 'Volume_high']
+
+        def __init__(self, volume_body) -> None:
+            self.volume_body = volume_body  # str for channel and object for music
+            volume = (soundeffect_object.manipulate_channel("get_volume", channel=volume_body) if type(volume_body) == str
+                      else volume_body.get_volume())
+            self.var = making_widget("DoubleVar")(value=volume)
+            self.scale = making_widget('Scale')(canvas, relief='solid', bd=3, length=400, orient='horizontal', from_=0, to=1, resolution=0.1,
+                                                tickinterval=0.2, showvalue=0, width=15, variable=self.var, font=font_get(16), command=self.__adjust)
+            self.label = making_widget('Label')(canvas, font=font_get(24, True),
+                                                textvariable=self.var, bg='coral')
+            o = self.__class__.order
+            canvas.create_window(
+                0, (100+separtae_line_width)*o, anchor='nw', window=self.scale)
+            canvas.create_window(
+                0,  (100+separtae_line_width)*o+60, anchor='nw', window=self.label)
+            canvas.create_line(0, (100+(separtae_line_width+1)/2)*(o+1),
+                               width, (100+(separtae_line_width+1)/2)*(o+1), width=separtae_line_width, tags=(f"line-{o}"))
+            for img in self.__class__.img_name:
+                canvas.create_image(
+                    width, (100+separtae_line_width)*o, anchor='ne', image=tk_image(f"{img}.ico", 96, 96, dirpath="images\\adjust_volume"),
+                    tags=(f"{self.var}-{img}"), state="hidden")
+            canvas.create_text(width-96, (100+separtae_line_width)*o+96/2, anchor="e",
+                               text=f"Channel\n{volume_body}" if type(volume_body) == str else "Music", justify="center", font=font_get(30))
+            self.__class__.order += 1
+            self.__adjust(None)
+
+        def __adjust(self, position):
+            if type(self.volume_body) == str:
+                # channel
+                soundeffect_object.manipulate_channel(
+                    "set_volume", self.var.get(), channel=self.volume_body)
+            else:
+                music_object.set_volume(self.var.get())
+
+            for name, condition in zip(self.__class__.img_name, ((0.0, 0.01), (0.1, 0.5), (0.6, 1.0))):
+                canvas.itemconfig(
+                    f"{self.var}-{name}", state="normal" if condition[0] <= self.var.get() <= condition[1] else "hidden")
+
+    soundeffect_channels = soundeffect_object.get_channels_name()
+    width = 700
+    separtae_line_width = 3
+    height = 100 + (100+separtae_line_width) * len(soundeffect_channels)
+
+    win = new_window("Adjust Volume", (width, height), icon)
+    canvas = making_widget('Canvas')(
+        win, width=width, height=height, bg='coral', highlightthickness=0)
+    canvas.grid()
+
+    Volume(music_object)
+    for channel in soundeffect_channels:
+        Volume(channel)
+    canvas.delete(f"line-{Volume.order-1}")

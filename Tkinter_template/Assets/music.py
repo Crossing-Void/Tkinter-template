@@ -1,5 +1,5 @@
 '''
-@version: 1.0.0
+@version: 1.0.1
 @author: CrossingVoid
 @date: 2023/03/05
 
@@ -7,12 +7,16 @@ The music.py is mainly for BGM aka music manipulations
 user should build a instance for class Music to
 do something to control whole music experience
 
+
+version 1.0.1:
+  fix some class Music issue
 '''
 import pygame
 import os
 
 
 _msuic_path = 'musics'
+pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
 pygame.init()
 pygame.mixer.init()
 
@@ -49,6 +53,9 @@ class Music:
 
     def toggle(self):
         self.pause = not (self.pause)
+
+    def get_volume(self):
+        return pygame.mixer.music.get_volume()
 
     def set_volume(self, volume):
         if (t := type(volume)) not in (int, float):

@@ -1,26 +1,26 @@
 '''
-@version: 1.1.3
+@version: 1.3.0
 @author: CrossingVoid
-@date: 2023/03/05
+@date: 2024/06/29
 
 The base.py include the main class `Interface`.
 
-Using our template, should(or need) to construct your projoct folder in the form:
+Using our template, should(or need) to construct your project folder in the form:
 
 Structure:
     Project
+        data
+          files
         images
           bitmaps
             files
           covers
             files
-        sounds
+        modules
           files
         musics
           files
-        datas
-          files
-        modules
+        sounds
           files
         project.py
 
@@ -28,14 +28,24 @@ Minimum:
     Project
         project.py
 
+version 1.2.0:
+  add rate feature, it can modify the canvas and dashboard rate,
+  correspoding your project need
+  add funtion modify_height, reduce code written in your project
+
+version 1.3.0:
+  add quit message feature, to protect main window from quit      
+
 '''
 from Tkinter_template.Assets.project_management import create_menu
+from tkinter import messagebox
 from tkinter import *
 import os
 
 
 class Interface:
     rate = 0.8
+    quit_message = None
 
     def __init__(self, title: str, icon=None, default_menu=True):
         self.__default_menu = default_menu
@@ -48,6 +58,14 @@ class Interface:
         '''
         root, side(tuple), isFullscreen(property)
         '''
+        def close_window():
+            msg = self.__class__.quit_message
+            if msg is not None:
+                if messagebox.askokcancel("Quit", msg):
+                    self.root.destroy()
+            else:
+                self.root.destroy()
+
         self.root = Tk()
         self.side = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         # self.side stand for fullscreen and not include top menu bar 20 pixel
@@ -57,6 +75,7 @@ class Interface:
         self.root.maxsize(*self.side)
         self.root.resizable(0, 0)
         self.root.state('zoomed')
+        self.root.protocol("WM_DELETE_WINDOW", close_window)
         self.isFullscreen = True
 
     @ property
@@ -111,5 +130,11 @@ class Interface:
 
         self.dashboard.grid(row=1, column=2, sticky='snew')
 
-
+    def modify_height(self):
+        self.dashboard['height'] = int(self.dashboard['height']) - 20
+        self.dashboard_side = int(self.dashboard['width']), int(
+            self.dashboard['height'])
+        self.canvas['height'] = int(self.canvas['height']) - 20
+        self.canvas_side = int(self.canvas['width']), int(
+            self.canvas['height'])
 # ------------------------------------------------------------------------------------------------------------------

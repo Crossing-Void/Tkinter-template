@@ -1,42 +1,80 @@
 '''
-@version: 1.0.0
+@version: 2.0.0
 @author: CrossingVoid
-@date: 2023/03/05
+@date: 2024/06/30
 
 The soundeffect.py is mainly for sound effects,
-particularly a short sound for special use in project.
+particularly a short sound for special use in project like tk game.
 
+version 2.0.0:
+  use class to warp all function together.
+  add channel feature to make sound more precision
 '''
-from Tkinter_template.Assets.universal import delete_extension
 import pygame
 import os
 
-
+pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
 pygame.init()
 pygame.mixer.init()
 _search_path = ['sounds']
-_soundeffects = {}
 
 
-def _gather_soundeffects():
-    for path_ in _search_path:
-        try:
-            walker = os.walk(path_)
-            break
-        except:
-            pass
+class Sound:
+    channel = 1
 
-    for now, _, filelist in walker:
-        for filename in filelist:
-            temp = now.split('\\')
-            key = temp[1:]+[delete_extension(filename)] if len(
-                temp) >= 2 else [delete_extension(filename)]
-            _soundeffects['/'.join(key)] = pygame.mixer.Sound(
-                os.path.join(now, filename))
+    def __init__(self) -> None:
+        self.__channel = {"default": pygame.mixer.Channel(1)}
+        self.__soundeffects = {}
+        self.refactor_soundeffects()
 
+    def refactor_soundeffects(self):
+        for path in _search_path:
+            if os.path.exists(path):
+                walker = os.walk(path)
+                break
+        else:
+            return
 
-_gather_soundeffects()
+        for now, _, filelist in walker:
+            for filename in filelist:
+                self.__soundeffects[
+                    (
+                        *now.split("\\")[1:], os.path.splitext(filename)[0]
+                    )
+                ] = pygame.mixer.Sound(os.path.join(now, filename))
 
+    def add_channel(self, name: str):
+        if name in self.__channel:
+            return
+        self.__class__.channel += 1
+        self.__channel[name] = pygame.mixer.Channel(self.__class__.channel)
 
-def play_sound(filename):
-    _soundeffects[filename].play()
+    def get_channels_name(self) -> tuple:
+        return tuple(
+            self.__channel.keys()
+        )
+
+    def play_sound(self, *paths, channel="default"):
+        self.__channel[channel].play(self.__soundeffects[paths])
+
+    def manipulate_channel(self, manipulate, *args, channel="default"):
+        channel = self.__channel[channel]
+
+        method = getattr(channel, manipulate)
+        if not callable(method):
+            raise ValueError(
+                f"The method: {method} is not a method of channel")
+
+        if args:
+            return method(*args)
+        else:
+            return method()
+
+    # play sound directly
+    #
+    #
+    #
+    #
+    #
+    #
+    #

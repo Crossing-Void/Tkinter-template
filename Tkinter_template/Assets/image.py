@@ -1,5 +1,5 @@
 '''
-@version: 1.1.0
+@version: 1.1.1
 @author: CrossingVoid
 @date: 2023/03/05
 
@@ -11,7 +11,12 @@ version 1.1.0:
   function tk_image add a new parameter `get_object_only`
   default is false, if true it return TkImage object instead
   a Tk img source.
+
+version 1.1.1:
+  remove function parameter `get_object_only` and `get_image_size` is instead.
+  it can get image size without build a object and consump resource 
 '''
+from collections import namedtuple
 from PIL import ImageTk, Image
 from dataclasses import dataclass
 import os
@@ -51,7 +56,7 @@ class TkImage:
         return TkImage.image_base[self]
 
 
-def tk_image(filename, width=None, height=None, *, dirpath=None, get_object_only=False):
+def tk_image(filename, width=None, height=None, *, dirpath=None, get_image_size=False):
     '''
     passing arguments only the filename, not include path,
     if not give dirpath, it will be search from the top of search_path
@@ -83,7 +88,7 @@ def tk_image(filename, width=None, height=None, *, dirpath=None, get_object_only
         width = int(size[0] * rate)
         size = (width, height)
     # ----- size -----
+    if get_image_size:
+        return namedtuple("size", "width height")(*size)
     img = TkImage(os.path.join(path, filename), *size)
-    if get_object_only:
-        return img
     return img.get_image()

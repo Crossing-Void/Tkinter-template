@@ -1,17 +1,25 @@
 '''
-@version: 1.1.0
+@version: 1.2.1
 @author: CrossingVoid
-@date: 2023/03/05
+@date: 2024/07/01
 
 The default_dashboard.py is mainly for 
 well-built function in right side dashboard.
 
+version 1.1.0:
+  add class MusicPlayer wraping class Music and provide more precision operation
+  for music playing or others
 
+version 1.1.1:
+  fix bug: time_show and date_show label configuration can be accessed by
+  using variable receive the function return
+  
+version 1.2.1:
+  new 
 The `date_show` and `time_show` can access and modify by yourself
 '''
 from Tkinter_template.Assets.project_management import canvas_obj_states, making_widget
-from Tkinter_template.Assets.font import font_get, font_span, measure
-from Tkinter_template.Assets.universal import delete_extension
+from Tkinter_template.Assets.font import font_get, font_span, measure, change_font, delete_font_set
 from Tkinter_template.Assets.extend_widget import EffectButton
 from Tkinter_template.Assets.image import tk_image
 from mutagen.mp3 import MP3
@@ -22,23 +30,26 @@ import os
 
 
 _time_, _date_ = None, None
-time_show, date_show = None, None
 
 
 def time_show(dashboard: object, side: tuple):
-    global _time_, time_show
+    global _time_
     _time_ = StringVar()
-    time_show = Label(dashboard, textvariable=_time_,
-                      font=font_get(font_span('00:00:00', side[0])), bd=1)
-    time_show.grid()
+    time_label = Label(dashboard, textvariable=_time_,
+                       font=font_get(font_span('00:00:00', side[0])), bd=1)
+    time_label.grid()
+
+    return time_label
 
 
 def date_show(dashboard: object, side: tuple):
-    global _date_, date_show
+    global _date_
     _date_ = StringVar()
-    date_show = Label(dashboard, textvariable=_date_,
-                      font=font_get(font_span('2022/09/09  (Mon)', side[0])), bd=1)
-    date_show.grid()
+    date_label = Label(dashboard, textvariable=_date_,
+                       font=font_get(font_span('2022/09/09  (Mon)', side[0])), bd=1)
+    date_label.grid()
+
+    return date_label
 
 
 def table(canvas: object, dashboard: object, side: tuple):
@@ -47,8 +58,9 @@ def table(canvas: object, dashboard: object, side: tuple):
             table_button['bg'] = 'red'
             canvas_obj_states(
                 canvas, 'hidden', 'cover')
-            table_button.bind('<Leave>', lambda event: event)
-            table_button.bind('<Enter>', lambda event: event)
+            # unbind all event
+            for event in table_button.bind():
+                table_button.unbind(event)
         elif table_button['bg'] == 'red':
             table_button['bg'] = 'gray'
             table_button.bind('<Enter>', enter)
@@ -137,7 +149,7 @@ class MusicPlayer:
                 self.__music_canvas.itemconfigure(
                     'musicplayerplaybutton-play', state='normal')
                 return '00:00'
-            
+
         elif type(sec) == str:
             return 60*int(sec[:2]) + int(sec[3:5])
 
@@ -312,7 +324,7 @@ class MusicPlayer:
         for musicIndex in range(start := musicPerPage*(page-1), end := musicPerPage*page):
             try:
                 label = making_widget('Label')(dashboard, font=font_get(self.fs),
-                                               text=delete_extension(musicList[musicIndex]), bg='lightblue', anchor='w',
+                                               text=os.path.splitext(musicList[musicIndex])[0], bg='lightblue', anchor='w',
                                                width=get_number())
                 play = EffectButton(('aqua', 'black'), dashboard, bg='lightblue',
                                     image=tk_image('play.png', width=int(
@@ -360,7 +372,7 @@ class MusicPlayer:
 
         self.__length.set(self.__second_fmt_change(
             self._get_mp3_info(file, 'length')))
-        self.__music_now.set(delete_extension(file))
+        self.__music_now.set(os.path.splitext(file)[0])
         self.mo.music = file
 
     # ---- need put in while loop ----
@@ -389,3 +401,80 @@ class MusicPlayer:
             self.__music_canvas.create_oval(
                 a+center-ball_r, b-ball_r, a+center+ball_r, b+ball_r, fill='black', tags=('musicplayer', 'musicplayerdurationball')
             )
+
+
+class BulletinBoard:
+    params = {
+        "bg": "#FFE4B5",
+        "title": "BULLETIN BOARD",
+        "title display": True
+    }
+
+    def __init__(self, dashboard, height: int) -> None:
+        self.p = self.__class__.params
+        self.ds = int(dashboard["width"]), height
+
+        # title
+        if self.p["title display"]:
+            font = font_get(1)[0]
+            if font.lower() != "castellar":
+                change_font("Castellar")
+                making_widget("Label")(
+                    dashboard, text=self.p["title"], bg=self.p["bg"], font=font_get(font_span(self.p["title"], self.ds[0]))).grid(sticky="nwse")
+                change_font(font)
+            else:
+                making_widget("Label")(
+                    dashboard, text=self.p["title"], bg=self.p["bg"], font=font_get(font_span(self.p["title"], self.ds[0]))).grid(sticky="nwse")
+        self.c = making_widget("Canvas")(
+            dashboard, width=self.ds[0], height=self.ds[1], bg=self.p["bg"])
+        self.c.grid()
+
+    def __compute_height(self):
+        find = False
+        for height in range(getattr(self, "start", 0), self.ds[1], 1):
+            if self.c.find_overlapping(0, height, self.ds[0], height):
+                find = True
+            else:
+                if find:
+                    self.start = height
+                    break
+
+    def get_progress_bar_arguments(self):
+        return {
+            "canvas": self.c,
+            "size": (self.ds[0], self.ds[1] - getattr(self, "start", 0)),
+            "position": (0, getattr(self, "start", 0))
+        }
+
+    def paste_message_in_single_line(self, message: str, font_size_upper_bond: int = 1000):
+        self.c.create_text(0, getattr(self, "start", 5), text=message, font=font_get(
+            font_span(message, self.ds[0], upper_bound=font_size_upper_bond)), anchor="nw")
+
+        self.__compute_height()
+
+    def paste_message_in_mutiple_line(self, message: str, font_size: int, wrap: str = "word"):
+        wrap = wrap.capitalize()
+        if wrap == "None":
+            self.c.create_text(0, getattr(
+                self, "start", 5), text=message, font=font_get(font_size), anchor="nw")
+            self.__compute_height()
+        else:
+            lines = []
+            if wrap == "Word":
+                message = message.split()
+            while True:
+                for i in range(len(message)):
+                    print(message)
+                    if measure(message[:i+1], font_size) > self.ds[0]:
+                        lines.append(message[:i])
+                        message = message[i:]
+                        break
+                else:
+                    lines.append(message)
+                    break
+
+            # render lines
+            for line in lines:
+                self.c.create_text(0, getattr(
+                    self, "start", 5), text=line, font=font_get(font_size), anchor="nw")
+                self.__compute_height()
